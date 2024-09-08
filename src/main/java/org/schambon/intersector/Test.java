@@ -1,4 +1,4 @@
-package org.schambon.inverter;
+package org.schambon.intersector;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -6,7 +6,6 @@ import org.bson.types.ObjectId;
 import com.mongodb.client.MongoClients;
 
 import static com.mongodb.client.model.Sorts.*;
-import static org.schambon.inverter.Inverter.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,6 +13,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import static org.schambon.intersector.Intersector.*;
 
 public class Test {
     
@@ -34,9 +34,27 @@ public class Test {
         System.out.println(format("Two criteria: Counted %d docs in %d ms", ct, System.currentTimeMillis() - start));
 
         start = System.currentTimeMillis();
+        ct = coll.countDocuments(new Document("field1", n1).append("field2", n2));
+        System.out.println(format("   (Baseline: Counted %d docs in %d ms)", ct, System.currentTimeMillis() - start));
+
+        start = System.currentTimeMillis();
+        ct = find(coll, new Document("field1", n1).append("field2", n2), sort, 100).size();
+        System.out.println(format("Fetched %d docs in %d ms with limit 100", ct, System.currentTimeMillis() - start));
+
+        start = System.currentTimeMillis();
+        for (var x : coll.find(new Document("field1", n1).append("field2", n2)).sort(sort).limit(100)) {
+            // nop
+        }
+        System.out.println(format("   (Baseline: %d ms)", System.currentTimeMillis() - start));
+
+        start = System.currentTimeMillis();
         var threeCrit = new Document("field1", n1).append("field2", n2).append("field3", n3);
         ct = count(coll, threeCrit, sort);
         System.out.println(format("Three criteria: Counted %d docs in %d ms", ct, System.currentTimeMillis() - start));
+
+        start = System.currentTimeMillis();
+        ct = coll.countDocuments(threeCrit);
+        System.out.println(format("   (Baseline: Counted %d docs in %d ms)", ct, System.currentTimeMillis() - start));
 
         start = System.currentTimeMillis();
         var list = find(coll, threeCrit, sort, 10);
@@ -80,23 +98,23 @@ public class Test {
             base.add(oid.getObjectId("_id"));
         }
         System.out.println(format("  Baseline fetch: %d ms", System.currentTimeMillis() - start));
-        Collections.sort(base);
+        // Collections.sort(base);
 
-        var setOne = new TreeSet<>(res);
-        var setTwo = new TreeSet<>(base);
+        // var setOne = new TreeSet<>(res);
+        // var setTwo = new TreeSet<>(base);
 
-        System.out.println("Found in one, not in two:");
-        for (var d : setOne) {
-            if (! setTwo.contains(d)) {
-                System.out.println(d);
-            }
-        }
-        System.out.println("Found in two, not in one:");
-        for (var d : setTwo) {
-            if (! setOne.contains(d)) {
-                System.out.println(d);
-            }
-        }
+        // System.out.println("Found in one, not in two:");
+        // for (var d : setOne) {
+        //     if (! setTwo.contains(d)) {
+        //         System.out.println(d);
+        //     }
+        // }
+        // System.out.println("Found in two, not in one:");
+        // for (var d : setTwo) {
+        //     if (! setOne.contains(d)) {
+        //         System.out.println(d);
+        //     }
+        // }
     }
 
 }

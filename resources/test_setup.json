@@ -1,0 +1,58 @@
+{
+    "connectionString": "mongodb://localhost",
+    "reportInterval": 10000,
+    "templates": [
+      {
+        "name": "tpl",
+        "database": "test",
+        "collection": "x",
+        "dictionaries": {
+        },
+        "template": {
+          "_id": "%objectid",
+          "ts": {"%date": {"min": {"$date": "2010-01-01"}, "max": "%now"}},
+          "field1": {"%natural": {"max": 100}},
+          "field2": {"%natural": {"max": 100}},
+          "field3": {"%natural":{"max":100}},
+          "field4": {"%natural":{"max":100}},
+          "field5": {"%natural":{"max":100}},
+          "field6": {"%natural":{"max":100}},
+          "field7": {"%natural":{"max":100}},
+          "field8": {"%natural":{"max":100}},
+          "field9": {"%natural":{"max":100}},
+          "field10": {"%natural":{"max":100}},
+          "field11": {"%natural":{"max":100}},
+          "field12": {"%natural":{"max":100}},
+          "field13": {"%natural":{"max":100}},
+          "field14": {"%natural":{"max":100}},
+          "field15": {"%natural":{"max":100}},
+          "field16": {"%natural":{"max":100}},
+          "field17": {"%natural":{"max":100}},
+          "field18": {"%natural":{"max":100}},
+          "field19": {"%natural":{"max":100}},
+          "field20": {"%natural":{"max":100}},
+          "payload": {"%binary": {"size": 512}}
+        },
+        "indexes": [
+            {"field1":1, "ts":-1, "_id":1},
+            {"field2":1, "ts":-1, "_id":1},
+            {"field3":1, "ts":-1, "_id":1},
+            {"field4":1, "ts":-1, "_id":1},
+            {"field5":1, "ts":-1, "_id":1}
+        ]
+      }
+      
+    ],
+    "workloads": [
+      {
+        "disabled": true,
+        "name": "Initial insert",
+        "template": "tpl",
+        "op": "insert",
+        "batch": 100,
+        "threads": 10,
+        "stopAfter": 10000
+      }
+    ]
+  }
+  
