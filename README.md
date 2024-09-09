@@ -41,7 +41,7 @@ while cursors_not_exhausted():
       add_match(extract_id(one))
 ```
 
-The implementation gets a little more complex to take care of descending sorts and generalizing to _n_ criteria (instead of two), but the idea is there.
+The implementation gets a little more complex to take care of descending sorts and generalizing to _n_ criteria (instead of two), but the idea is there. Also, I assume that the standard use case is to show the first X results as well as the total number of results, so I wrote two methods: count and find with limit. Presumably this can be optimized further by doing both tasks at the same time.
 
 Is it really faster?
 --------------------
@@ -58,15 +58,17 @@ The class `org.schambon.intersector.Test` contains a few tests running on this c
 
 Most times, we compare with a "baseline" which is plainly executing the full query on the same set of indexes. It's moderately realistic - if one really can't identify common queries, the best one can do is to create indexes on all fields and hope that one of the indexes will narrow down the filtering enough. In this particular scenario, this doesn't hold - by construction, there are around 100,000 records for each value of each field: the _baseline_ query will always have to `FETCH` and filter through 100,000 records in the collection.
 
-On my laptop (M1 Pro Macbook with 16GB RAM, a couple of years from cutting edge), running a local MongoDB server of the latest 8.0 release candidate (`8.0.0-rc20` to be precise), I get the following results:
+On my laptop (M1 Pro Macbook with 16GB RAM, a couple of years from cutting edge), running a local MongoDB server of the latest 8.0 release candidate (`8.0.0-rc20` to be precise), I get the following results in milliseconds:
 
-- two equalities, count (1,039 results): 339 ms vs baseline of 11,429 ms (~97% faster)
-- two equalities, fetch first 100: 244 ms vs 2,131 ms (~89% faster)
-- three equalities, count (6 results): 312 ms vs 40,509 ms (~99% faster)
-- three equalities, fetch all results: 284 ms vs 8,958 ms (~97% faster)
-- one range, one equality, count (11,487 results): 4,476 ms vs 9,208 ms (~51% faster)
-- two ranges, count (581,293 results): 21,805 ms vs 128,793 ms (~83% faster)
-- two ranges, fetch first 15: 12,740 ms vs 118,593 ms (~89% faster)
+| Test                       | # results | baseline ms | intersector ms | gain % |
+| -------------------------- | --------- | ----------- | -------------- | ------ |
+| Two equalities, count      | 1,039     | 11,429      | 339            | 97%    |
+| Two equalities, fetch 100  | 100       | 2,131       | 224            | 89%    |
+| Three equalities, count    | 6         | 40,509      | 312            | 99%    |
+| Three equalities, fetch 10 | 6         | 8,958       | 284            | 97%    |
+| One range, one eq., count  | 11,487    | 9,208       | 4,476          | 51%    |
+| Two ranges, count          | 581,293   | 128,793     | 21,805         | 83%    |
+| Two ranges, fetch 15       | 15        | 118,593     | 12,740         | 89%    |
 
 Of course, this specific test is highly unrealistic - the data distribution is highly homogeneous, and so on. In a real-world situation, it's possible, or even likely, that the observed performance would be very different. So we shouldn't read too much in the performance numbers. But we can still make some observations:
 
