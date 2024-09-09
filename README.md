@@ -41,7 +41,7 @@ while cursors_not_exhausted():
       add_match(extract_id(one))
 ```
 
-The implementation gets a little more complex to take care of descending sorts and generalizing to _n_ criteria (instead of two), but the idea is there. Also, I assume that the standard use case is to show the first X results as well as the total number of results, so I wrote two methods: count and find with limit. Presumably this can be optimized further by doing both tasks at the same time.
+The implementation gets a little more complex to take care of descending sorts and generalizing to _n_ criteria (instead of two), but the idea is there. Also, I assume that the standard use case is to show the first X results as well as the total number of results, so I wrote two methods: count and find with limit; as well as a combined count + fetch first operation. Presumably, a real world scenario would also need to implement skip as well as limit, but that's easy to add.
 
 Is it really faster?
 --------------------
@@ -60,21 +60,23 @@ Most times, we compare with a "baseline" which is plainly executing the full que
 
 On my laptop (M1 Pro Macbook with 16GB RAM, a couple of years from cutting edge), running a local MongoDB server of the latest 8.0 release candidate (`8.0.0-rc20` to be precise), I get the following results in milliseconds:
 
-| Test                       | # results | baseline ms | intersector ms | gain % |
-| -------------------------- | --------- | ----------- | -------------- | ------ |
-| Two equalities, count      | 1,039     | 11,429      | 339            | 97%    |
-| Two equalities, fetch 100  | 100       | 2,131       | 224            | 89%    |
-| Three equalities, count    | 6         | 40,509      | 312            | 99%    |
-| Three equalities, fetch 10 | 6         | 8,958       | 284            | 97%    |
-| One range, one eq., count  | 11,487    | 9,208       | 4,476          | 51%    |
-| Two ranges, count          | 581,293   | 128,793     | 21,805         | 83%    |
-| Two ranges, fetch 15       | 15        | 118,593     | 12,740         | 89%    |
+| Test                                            | # results | baseline ms                         | intersector ms | gain % |
+| ----------------------------------------------- | --------- | ----------------------------------- | -------------- | ------ |
+| Two equalities, count                           | 1,039     | 11,429                              | 339            | 97%    |
+| Two equalities, fetch 100                       | 100       | 2,131                               | 224            | 89%    |
+| Three equalities, count                         | 6         | 40,509                              | 312            | 99%    |
+| Three equalities, fetch 10                      | 6         | 8,958                               | 284            | 97%    |
+| One range, one eq., count                       | 11,487    | 9,208                               | 4,476          | 51%    |
+| Two ranges, count                               | 581,293   | 128,793                             | 21,805         | 83%    |
+| Two ranges, fetch 15                            | 15        | 118,593                             | 12,740         | 89%    |
+| Two eq. and a range, combined count + fetch 100 | 108       | 103,900 (59,086 count, 44,814 find) | 4,011          | 96%    |
 
 Of course, this specific test is highly unrealistic - the data distribution is highly homogeneous, and so on. In a real-world situation, it's possible, or even likely, that the observed performance would be very different. So we shouldn't read too much in the performance numbers. But we can still make some observations:
 
 - _in the right conditions_, index intersection can be significantly faster than naive single-indexing (it's never going to be as fast as properly optimized compound indexes tailored for a given query, though)
 - Range queries are much harder than equality. No surprise: our cursors need to perform a server-side in-memory sort on large result sets.
 - Larger result sets take longer to count/fetch than small ones. Well, duh.
+- It's still not really acceptable performance for very wide queries with ranges and the like. Presumably after some threshold we could give an approximate count ("more than 10,000 results").
 
 A few end notes on performance:
 - All this isn't free - we open a lot more cursors on the server. It's okay for a handful of users using a GUI, it may not be the case if you have tens of thousands of clients running queries in a loop.

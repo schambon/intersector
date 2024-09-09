@@ -98,6 +98,23 @@ public class Test {
             base.add(oid.getObjectId("_id"));
         }
         System.out.println(format("  Baseline fetch: %d ms", System.currentTimeMillis() - start));
+
+        start = System.currentTimeMillis();
+        search = new Document("field3", 89).append("field4", 10).append("field5", new Document("$lt", 10));
+        var results = new ArrayList<Document>(100);
+        ct = findAndCount(coll, search, sort, 100, results);
+        System.out.println(format("2 equalities + 1 range, counted %d and fetched %d in %d ms", ct, results.size(), System.currentTimeMillis() - start));
+
+        start = System.currentTimeMillis();
+        ct = coll.countDocuments(search);
+        var mid = System.currentTimeMillis();
+        var fetched = 0;
+        for (var d: coll.find(search).sort(sort).limit(100)) {
+            fetched++;
+        }
+        var end = System.currentTimeMillis();
+        System.out.println(format("   (Baseline: %d ms for count, %d for fetch, %d total (%d results, fetched %d))", mid - start, end - mid, end - start, ct, fetched));
+
         // Collections.sort(base);
 
         // var setOne = new TreeSet<>(res);

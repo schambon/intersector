@@ -13,6 +13,30 @@ import com.mongodb.client.MongoCursor;
 
 public class Intersector {
 
+    public static <T> long findAndCount(MongoCollection<T> coll, Bson filter, Bson sort, int limit, List<T> results) {
+
+        var df = filter.toBsonDocument();
+        if (df.size() == 0) {
+            throw new IllegalArgumentException("Empty filter not supported");
+        } else if (df.size() == 1) {
+
+            for (var d : coll.find(filter).sort(sort).limit(limit)) {
+                results.add(d);
+            }
+            return coll.countDocuments(filter);
+        }
+
+        var t = new FindAndCountTraversor(limit);
+        traverse(coll, filter, sort, t);
+        
+
+        for (var d: coll.find(in("_id", t.oids())).sort(sort)) {
+            results.add(d);
+        }
+        return t.count();
+
+    }
+
     public static <T> List<T> find(MongoCollection<T> coll, Bson filter, Bson sort, int limit) {
 
         var result = new ArrayList<T>(limit);
@@ -29,7 +53,7 @@ public class Intersector {
         }
 
         var ft = new FindTraversor(limit);
-        execute(coll, filter, sort, ft);
+        traverse(coll, filter, sort, ft);
         
 
         for (var d: coll.find(in("_id", ft.oids())).sort(sort)) {
@@ -47,11 +71,11 @@ public class Intersector {
         }
 
         var ct = new CountTraversor();
-        execute(coll, filter, sort, ct);
+        traverse(coll, filter, sort, ct);
         return ct.count();
     }
 
-    static <T> void execute(MongoCollection<T> coll, Bson filter, Bson sort, Traversor t) {
+    static <T> void traverse(MongoCollection<T> coll, Bson filter, Bson sort, Traversor t) {
 
         var df = filter.toBsonDocument();
 
@@ -170,9 +194,9 @@ public class Intersector {
         boolean keepGoing();
     }
 
-    static class CountTraversor implements Traversor {
+    private static class CountTraversor implements Traversor {
 
-        private int count = 0;
+        private long count = 0;
 
         @Override
         public void match(Object oid) {
@@ -184,21 +208,21 @@ public class Intersector {
             return true;
         }
 
-        public int count() {
+        public long count() {
             return count;
         }
     }
 
-    static class FindTraversor implements Traversor {
+    private static class FindTraversor implements Traversor {
 
         private int limit;
         private List<Object> oids;
-        private int count;
+        private long count;
 
         public FindTraversor(int limit) {
             this.limit = limit;
             this.oids = new ArrayList<>(limit);
-            this.count = 0;
+            this.count = 0l;
         }
 
         @Override
@@ -214,6 +238,39 @@ public class Intersector {
 
         public List<Object> oids() {
             return oids;
+        }
+
+    }
+
+    private static class FindAndCountTraversor implements Traversor {
+
+        private int limit;
+        private List<Object> oids;
+        private long count;
+
+        public FindAndCountTraversor(int limit) {
+            this.limit = limit;
+            this.oids = new ArrayList<>(limit);
+            this.count = 0l;
+        }
+
+        @Override
+        public void match(Object oid) {
+            count++;
+            if (count < limit) oids.add(oid);
+        }
+
+        @Override
+        public boolean keepGoing() {
+            return true;
+        }
+
+        public List<Object> oids() {
+            return oids;
+        }
+
+        public long count() {
+            return count;
         }
 
     }
