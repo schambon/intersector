@@ -256,8 +256,8 @@ public class Intersector {
 
         @Override
         public void match(Object oid) {
-            count++;
             if (count < limit) oids.add(oid);
+            count++;
         }
 
         @Override
